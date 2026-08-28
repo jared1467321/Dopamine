@@ -25,6 +25,8 @@
 @property(nonatomic) BOOL hideStatusBar;
 @property(nonatomic) BOOL hideHomeIndicator;
 
+- (void)scheduleAutoJailbreak;
+
 @end
 
 @implementation DOMainViewController
@@ -157,6 +159,8 @@
         [self.jailbreakBtn.centerYAnchor constraintEqualToAnchor:buttonPlaceHolder.centerYAnchor]
     ])];
 
+    [self scheduleAutoJailbreak];
+
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.1 * NSEC_PER_SEC), dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0), ^{
         if ([[DOUIManager sharedInstance] environmentUpdateAvailable])
         {
@@ -170,6 +174,44 @@
                 [self setupUpdateAvailable:NO];
             });
         }
+    });
+}
+
+- (void)scheduleAutoJailbreak
+{
+    DOPreferenceManager *preferenceManager = [DOPreferenceManager sharedManager];
+    if (![preferenceManager boolPreferenceValueForKey:@"autoJailbreakEnabled" fallback:YES]) {
+        return;
+    }
+
+    NSNumber *delayPreference = [preferenceManager preferenceValueForKey:@"autoJailbreakDelay"];
+    NSArray<NSNumber *> *allowedDelays = @[@5, @10, @15, @20, @30, @45, @60];
+    NSNumber *delay = [delayPreference isKindOfClass:[NSNumber class]] && [allowedDelays containsObject:delayPreference] ? delayPreference : @15;
+
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delay.doubleValue * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        DOEnvironmentManager *environmentManager = [DOEnvironmentManager sharedManager];
+        DOPreferenceManager *currentPreferenceManager = [DOPreferenceManager sharedManager];
+
+        if (![currentPreferenceManager boolPreferenceValueForKey:@"autoJailbreakEnabled" fallback:YES]) {
+            return;
+        }
+        if ([currentPreferenceManager boolPreferenceValueForKey:@"removeJailbreakEnabled" fallback:NO]) {
+            return;
+        }
+        if ([UIApplication sharedApplication].applicationState != UIApplicationStateActive) {
+            return;
+        }
+        if (self.navigationController.topViewController != self || self.presentedViewController) {
+            return;
+        }
+        if (!environmentManager.isSupported || environmentManager.isJailbroken || environmentManager.isJailbrokenWithOtherJailbreak) {
+            return;
+        }
+        if (!self.jailbreakBtn.isEnabled || self.jailbreakBtn.didExpand) {
+            return;
+        }
+
+        [self.jailbreakBtn.button sendActionsForControlEvents:UIControlEventTouchUpInside];
     });
 }
 
