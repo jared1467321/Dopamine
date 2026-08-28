@@ -23,6 +23,8 @@
 
 @interface DOSettingsController ()
 
+@property (nonatomic, strong) PSSpecifier *autoJailbreakDelaySpecifier;
+
 @end
 
 @implementation DOSettingsController
@@ -149,6 +151,33 @@
     ];
 }
 
+- (NSArray *)autoJailbreakDelayValues
+{
+    return @[
+        @5,
+        @10,
+        @15,
+        @20,
+        @30,
+        @45,
+        @60,
+    ];
+}
+
+- (NSArray *)autoJailbreakDelayTitles
+{
+    NSString *secondsFormat = DOLocalizedString(@"Seconds_Format");
+    return @[
+        [NSString stringWithFormat:secondsFormat, @5],
+        [NSString stringWithFormat:secondsFormat, @10],
+        [NSString stringWithFormat:secondsFormat, @15],
+        [NSString stringWithFormat:secondsFormat, @20],
+        [NSString stringWithFormat:secondsFormat, @30],
+        [NSString stringWithFormat:secondsFormat, @45],
+        [NSString stringWithFormat:secondsFormat, @60],
+    ];
+}
+
 - (id)specifiers
 {
     if(_specifiers == nil) {
@@ -229,6 +258,24 @@
             PSSpecifier *settingsGroupSpecifier = [PSSpecifier emptyGroupSpecifier];
             settingsGroupSpecifier.name = DOLocalizedString(@"Section_Jailbreak_Settings");
             [specifiers addObject:settingsGroupSpecifier];
+
+            PSSpecifier *autoJailbreakEnabledSpecifier = [PSSpecifier preferenceSpecifierNamed:DOLocalizedString(@"Settings_Auto_Jailbreak") target:self set:@selector(setAutoJailbreakEnabled:specifier:) get:defGetter detail:nil cell:PSSwitchCell edit:nil];
+            [autoJailbreakEnabledSpecifier setProperty:@YES forKey:@"enabled"];
+            [autoJailbreakEnabledSpecifier setProperty:@"autoJailbreakEnabled" forKey:@"key"];
+            [autoJailbreakEnabledSpecifier setProperty:@YES forKey:@"default"];
+            [specifiers addObject:autoJailbreakEnabledSpecifier];
+
+            self.autoJailbreakDelaySpecifier = [PSSpecifier preferenceSpecifierNamed:DOLocalizedString(@"Settings_Auto_Jailbreak_Delay") target:self set:defSetter get:defGetter detail:nil cell:PSLinkListCell edit:nil];
+            [self.autoJailbreakDelaySpecifier setProperty:@YES forKey:@"enabled"];
+            [self.autoJailbreakDelaySpecifier setProperty:@"autoJailbreakDelay" forKey:@"key"];
+            [self.autoJailbreakDelaySpecifier setProperty:@15 forKey:@"default"];
+            self.autoJailbreakDelaySpecifier.detailControllerClass = [DOPSListItemsController class];
+            [self.autoJailbreakDelaySpecifier setProperty:@"autoJailbreakDelayValues" forKey:@"valuesDataSource"];
+            [self.autoJailbreakDelaySpecifier setProperty:@"autoJailbreakDelayTitles" forKey:@"titlesDataSource"];
+
+            if ([[DOPreferenceManager sharedManager] boolPreferenceValueForKey:@"autoJailbreakEnabled" fallback:YES]) {
+                [specifiers addObject:self.autoJailbreakDelaySpecifier];
+            }
             
             PSSpecifier *tweakInjectionSpecifier = [PSSpecifier preferenceSpecifierNamed:DOLocalizedString(@"Settings_Tweak_Injection") target:self set:@selector(setTweakInjectionEnabled:specifier:) get:@selector(readTweakInjectionEnabled:) detail:nil cell:PSSwitchCell edit:nil];
             [tweakInjectionSpecifier setProperty:@YES forKey:@"enabled"];
@@ -411,6 +458,21 @@
         return [specifier propertyForKey:@"default"];
     }
     return value;
+}
+
+- (void)setAutoJailbreakEnabled:(id)value specifier:(PSSpecifier *)specifier
+{
+    [self setPreferenceValue:value specifier:specifier];
+
+    BOOL enabled = ((NSNumber *)value).boolValue;
+    BOOL delaySpecifierVisible = [self containsSpecifier:self.autoJailbreakDelaySpecifier];
+
+    if (enabled && !delaySpecifierVisible) {
+        [self insertSpecifier:self.autoJailbreakDelaySpecifier afterSpecifier:specifier animated:YES];
+    }
+    else if (!enabled && delaySpecifierVisible) {
+        [self removeSpecifier:self.autoJailbreakDelaySpecifier animated:YES];
+    }
 }
 
 - (id)readExploitPreferenceValue:(PSSpecifier *)specifier
