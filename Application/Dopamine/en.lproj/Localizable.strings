@@ -39,6 +39,9 @@
 
 // Settings Options
 "Settings_Tweak_Injection" = "Tweak Injection";
+"Settings_Auto_Jailbreak" = "Auto Jailbreak on Launch";
+"Settings_Auto_Jailbreak_Delay" = "Auto Jailbreak Delay";
+"Seconds_Format" = "%@ seconds";
 "Settings_iDownload" = "iDownload (Developer Shell)";
 "Settings_Verbose_Logs" = "Verbose Logs";
 "Settings_Apps_JIT" = "Allow JIT in Apps";
